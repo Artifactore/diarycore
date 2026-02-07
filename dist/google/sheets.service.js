@@ -1,0 +1,117 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var GoogleSheetsService_1;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GoogleSheetsService = void 0;
+const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
+const googleapis_1 = require("googleapis");
+const fs = __importStar(require("fs"));
+let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
+    configService;
+    logger = new common_1.Logger(GoogleSheetsService_1.name);
+    sheets = null;
+    spreadsheetId;
+    constructor(configService) {
+        this.configService = configService;
+        this.spreadsheetId = this.configService.get('GOOGLE_SPREADSHEET_ID') || '';
+        this.initializeClient();
+    }
+    initializeClient() {
+        try {
+            const credentialsPath = this.configService.get('GOOGLE_CREDENTIALS_PATH');
+            if (credentialsPath && fs.existsSync(credentialsPath)) {
+                const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+                const auth = new googleapis_1.google.auth.GoogleAuth({
+                    credentials,
+                    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+                });
+                this.sheets = googleapis_1.google.sheets({ version: 'v4', auth });
+                this.logger.log('Google Sheets client initialized');
+            }
+            else {
+                this.logger.warn('Google credentials not found. Sheets integration disabled.');
+            }
+        }
+        catch (error) {
+            this.logger.error(`Failed to initialize Google Sheets: ${error.message}`);
+        }
+    }
+    async appendWorkout(data) {
+        if (!this.sheets) {
+            this.logger.warn('Google Sheets not initialized, skipping workout save');
+            throw new Error('Google Sheets not configured');
+        }
+        const values = [[
+                data.date,
+                data.exercise,
+                data.muscleGroup,
+                data.sets,
+                data.reps,
+                data.weight,
+                data.comment,
+            ]];
+        await this.sheets.spreadsheets.values.append({
+            spreadsheetId: this.spreadsheetId,
+            range: 'Тренировки!A:G',
+            valueInputOption: 'USER_ENTERED',
+            requestBody: { values },
+        });
+        this.logger.log(`Workout saved: ${data.exercise}`);
+    }
+    async appendNote(data) {
+        if (!this.sheets) {
+            this.logger.warn('Google Sheets not initialized, skipping note save');
+            throw new Error('Google Sheets not configured');
+        }
+        const values = [[
+                data.date,
+                data.time,
+                data.note,
+            ]];
+        await this.sheets.spreadsheets.values.append({
+            spreadsheetId: this.spreadsheetId,
+            range: 'Заметки!A:C',
+            valueInputOption: 'USER_ENTERED',
+            requestBody: { values },
+        });
+        this.logger.log(`Note saved: ${data.note.substring(0, 50)}...`);
+    }
+};
+exports.GoogleSheetsService = GoogleSheetsService;
+exports.GoogleSheetsService = GoogleSheetsService = GoogleSheetsService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [config_1.ConfigService])
+], GoogleSheetsService);
+//# sourceMappingURL=sheets.service.js.map
