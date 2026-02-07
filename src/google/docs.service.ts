@@ -16,9 +16,23 @@ export class GoogleDocsService {
 
   private initializeClient(): void {
     try {
-      const credentialsPath = this.configService.get<string>('GOOGLE_CREDENTIALS_PATH');
-      if (credentialsPath && fs.existsSync(credentialsPath)) {
-        const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+      let credentials: any = null;
+      
+      // Try base64 encoded credentials first (for production)
+      const credentialsBase64 = this.configService.get<string>('GOOGLE_CREDENTIALS_BASE64');
+      if (credentialsBase64) {
+        credentials = JSON.parse(Buffer.from(credentialsBase64, 'base64').toString('utf8'));
+        this.logger.log('Loaded credentials from GOOGLE_CREDENTIALS_BASE64');
+      } else {
+        // Fallback to file path (for local development)
+        const credentialsPath = this.configService.get<string>('GOOGLE_CREDENTIALS_PATH');
+        if (credentialsPath && fs.existsSync(credentialsPath)) {
+          credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+          this.logger.log('Loaded credentials from file');
+        }
+      }
+      
+      if (credentials) {
         const auth = new google.auth.GoogleAuth({
           credentials,
           scopes: ['https://www.googleapis.com/auth/documents'],
