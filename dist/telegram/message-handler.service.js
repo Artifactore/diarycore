@@ -96,15 +96,19 @@ let MessageHandlerService = MessageHandlerService_1 = class MessageHandlerServic
     }
     async saveWorkout(chatId, data, response) {
         try {
-            await this.sheets.appendWorkout({
-                date: data.date || new Date().toLocaleDateString('ru-RU'),
-                exercise: data.exercise,
-                muscleGroup: data.muscleGroup,
-                sets: data.sets,
-                reps: data.reps,
-                weight: data.weight,
-                comment: data.comment || '',
-            });
+            const workouts = Array.isArray(data) ? data : [data];
+            for (const workout of workouts) {
+                await this.sheets.appendWorkout({
+                    date: workout.date || new Date().toLocaleDateString('ru-RU'),
+                    exercise: workout.exercise || '',
+                    muscleGroup: workout.muscleGroup || '',
+                    sets: workout.sets || '',
+                    reps: workout.reps || '',
+                    weight: workout.weight || '',
+                    comment: workout.comment || '',
+                });
+                this.logger.log(`Saved workout: ${workout.exercise}`);
+            }
             await this.telegram.sendMessage(chatId, response);
         }
         catch (error) {

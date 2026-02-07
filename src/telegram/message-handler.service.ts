@@ -89,15 +89,22 @@ export class MessageHandlerService {
 
   private async saveWorkout(chatId: number, data: any, response: string): Promise<void> {
     try {
-      await this.sheets.appendWorkout({
-        date: data.date || new Date().toLocaleDateString('ru-RU'),
-        exercise: data.exercise,
-        muscleGroup: data.muscleGroup,
-        sets: data.sets,
-        reps: data.reps,
-        weight: data.weight,
-        comment: data.comment || '',
-      });
+      // Handle both single workout and array of workouts
+      const workouts = Array.isArray(data) ? data : [data];
+      
+      for (const workout of workouts) {
+        await this.sheets.appendWorkout({
+          date: workout.date || new Date().toLocaleDateString('ru-RU'),
+          exercise: workout.exercise || '',
+          muscleGroup: workout.muscleGroup || '',
+          sets: workout.sets || '',
+          reps: workout.reps || '',
+          weight: workout.weight || '',
+          comment: workout.comment || '',
+        });
+        this.logger.log(`Saved workout: ${workout.exercise}`);
+      }
+      
       await this.telegram.sendMessage(chatId, response);
     } catch (error) {
       this.logger.error(`Failed to save workout: ${error.message}`);
